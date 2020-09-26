@@ -23,7 +23,8 @@ def connectionLoop(sock):
             clients[addr] = {}
             clients[addr]['lastBeat'] = datetime.now()
             clients[addr]['color'] = 0
-            message = {"cmd": 0,"player":{"id":str(addr)}}
+            message = {"cmd": 0,"player":{"id":str(addr), "color": {"R": 0.0, "G": 0.0, "B": 0.0}}}
+            message = {"cmd": 0, "id":str(addr), "color": {"R": 0.0, "G": 0.0, "B": 0.0}}
             m = json.dumps(message)
             for c in clients:
                sock.sendto(bytes(m,'utf8'), (c[0],c[1]))
@@ -36,11 +37,17 @@ def connectionLoop(sock):
                l = json.dumps(playerList)
             sock.sendto(bytes(l, 'utf8'), (addr[0],addr[1]))
 
-def cleanClients():
+def cleanClients(sock):
    while True:
       for c in list(clients.keys()):
          if (datetime.now() - clients[c]['lastBeat']).total_seconds() > 5:
             print('Dropped Client: ', c)
+
+            message = {"cmd": 2, "client": str(c)}
+            m = json.dumps(message)
+            for c in clients:
+               sock.sendto(bytes(m, 'utf8'), (c[0], c[1]))
+
             clients_lock.acquire()
             del clients[c]
             clients_lock.release()
@@ -70,7 +77,7 @@ def main():
    s.bind(('', port))
    start_new_thread(gameLoop, (s,))
    start_new_thread(connectionLoop, (s,))
-   start_new_thread(cleanClients,())
+   start_new_thread(cleanClients, (s,))
    while True:
       time.sleep(1)
 
